@@ -1,184 +1,85 @@
-const mineflayer = require('mineflayer');
-const Movements = require('mineflayer-pathfinder').Movements;
-const pathfinder = require('mineflayer-pathfinder').pathfinder;
-const { GoalBlock, GoalXZ } = require('mineflayer-pathfinder').goals;
+const mineflayer = require('mineflayer')
+const { pathfinder, Movements, goals } = require('mineflayer-pathfinder')
+const { GoalBlock } = goals
+const mcDataLoader = require('minecraft-data')
+const config = require('./settings.json')
 
-const config = require('./settings.json');
+function startBot () {
+  const bot = mineflayer.createBot({
+    username: config['bot-account'].username,
+    auth: config['bot-account'].type,
+    host: config.server.ip,
+    port: config.server.port,
+    version: config.server.version
+  })
 
-const loggers = require('./logging.js');
-const logger = loggers.logger;
+  bot.loadPlugin(pathfinder)
 
-function createBot() {
-   const bot = mineflayer.createBot({
-      username: config['bot-account']['username'],
-      password: config['bot-account']['password'],
-      auth: config['bot-account']['type'],
-      host: config.server.ip,
-      port: config.server.port,
-      version: config.server.version,
-   });
+  bot.once('spawn', () => {
+    console.log('✅ Bot joined the server')
 
-   bot.loadPlugin(pathfinder);
-   const mcData = require('minecraft-data')(bot.version);
-   const defaultMove = new Movements(bot, mcData);
-   bot.settings.colorsEnabled = false;
-   bot.pathfinder.setMovements(defaultMove);
+    const mcData = mcDataLoader(bot.version)
+    const movements = new Movements(bot, mcData)
+    bot.pathfinder.setMovements(movements)
 
-   bot.once('spawn', () => {
-      logger.info("Bot joined to the server");
+    /* AUTO AUTH */
+    if (config.utils['auto-auth'].enabled) {
+      setTimeout(() => {
+        bot.chat(`/login ${config.utils['auto-auth'].password}`)
+      }, 3000)
+    }
 
-      if (config.utils['auto-auth'].enabled) {
-         logger.info('Started auto-auth module');
+    /* CHAT MESSAGES */
+    if (config.utils['chat-messages'].enabled) {
+      let msgs = config.utils['chat-messages'].messages
+      let i = 0
 
-         let password = config.utils['auto-auth'].password;
-         setTimeout(() => {
-            bot.chat(`/register ${password} ${password}`);
-            bot.chat(`/login ${password}`);
-         }, 500);
+      setInterval(() => {
+        if (!bot.player) return
+        bot.chat(msgs[i])
+        i = (i + 1) % msgs.length
+      }, config.utils['chat-messages']['repeat-delay'] * 1000)
+    }
 
-         logger.info(`Authentication commands executed`);
-      }
+    /* POSITION MOVE */
+    if (config.position.enabled) {
+      bot.pathfinder.setGoal(
+        new GoalBlock(
+          config.position.x,
+          config.position.y,
+          config.position.z
+        )
+      )
+    }
 
-      if (config.utils['chat-messages'].enabled) {
-         logger.info('Started chat-messages module');
+    /* ANTI AFK */
+    if (config.utils['anti-afk'].enabled) {
+      if (config.utils['anti-afk'].sneak) bot.setControlState('sneak', true)
+      if (config.utils['anti-afk'].jump) bot.setControlState('jump', true)
 
-         let messages = config.utils['chat-messages']['messages'];
-
-         if (config.utils['chat-messages'].repeat) {
-            let delay = config.utils['chat-messages']['repeat-delay'];
-            let i = 0;
-
-            setInterval(() => {
-               bot.chat(`${messages[i]}`);
-
-               if (i + 1 === messages.length) {
-                  i = 0;
-               } else i++;
-            }, delay * 1000);
-         } else {
-            messages.forEach((msg) => {
-               bot.chat(msg);
-            });
-         }
-      }
-
-      const pos = config.position;
-
-      if (config.position.enabled) {
-         logger.info(
-             `Starting moving to target location (${pos.x}, ${pos.y}, ${pos.z})`
-         );
-         bot.pathfinder.setGoal(new GoalBlock(pos.x, pos.y, pos.z));
-      }
-
-      if (config.utils['anti-afk'].enabled) {
-         if (config.utils['anti-afk'].sneak) {
-            bot.setControlState('sneak', true);
-         }
-
-         if (config.utils['anti-afk'].jump) {
-            bot.setControlState('jump', true);
-         }
-
-         if (config.utils['anti-afk']['hit'].enabled) {
-            let delay = config.utils['anti-afk']['hit']['delay'];
-            let attackMobs = config.utils['anti-afk']['hit']['attack-mobs']
-
-            setInterval(() => {
-               if(attackMobs) {
-                     let entity = bot.nearestEntity(e => e.type !== 'object' && e.type !== 'player'
-                         && e.type !== 'global' && e.type !== 'orb' && e.type !== 'other');
-
-                     if(entity) {
-                        bot.attack(entity);
-                        return
-                     }
-               }
-
-               bot.swingArm("right", true);
-            }, delay);
-         }
-
-         if (config.utils['anti-afk'].rotate) {
-            setInterval(() => {
-               bot.look(bot.entity.yaw + 1, bot.entity.pitch, true);
-            }, 100);
-         }
-
-         if (config.utils['anti-afk']['circle-walk'].enabled) {
-            let radius = config.utils['anti-afk']['circle-walk']['radius']
-            circleWalk(bot, radius);
-         }
-      }
-   });
-
-   bot.on('chat', (username, message) => {
-      if (config.utils['chat-log']) {
-         logger.info(`<${username}> ${message}`);
-      }
-   });
-
-   bot.on('goal_reached', () => {
-      if(config.position.enabled) {
-         logger.info(
-             `Bot arrived to target location. ${bot.entity.position}`
-         );
-      }
-   });
-
-   bot.on('death', () => {
-      logger.warn(
-         `Bot has been died and was respawned at ${bot.entity.position}`
-      );
-   });
-
-   if (config.utils['auto-reconnect']) {
-      bot.on('end', () => {
-         setTimeout(() => {
-            createBot();
-         }, config.utils['auto-reconnect-delay']);
-      });
-   }
-
-   bot.on('kicked', (reason) => {
-      let reasonText = JSON.parse(reason).text;
-      if(reasonText === '') {
-         reasonText = JSON.parse(reason).extra[0].text
-      }
-      reasonText = reasonText.replace(/§./g, '');
-
-      logger.warn(`Bot was kicked from the server. Reason: ${reasonText}`)
-   }
-   );
-
-   bot.on('error', (err) =>
-      logger.error(`${err.message}`)
-   );
-}
-
-function circleWalk(bot, radius) {
-   // Make bot walk in square with center in bot's  wthout stopping
-    return new Promise(() => {
-        const pos = bot.entity.position;
-        const x = pos.x;
-        const y = pos.y;
-        const z = pos.z;
-
-        const points = [
-            [x + radius, y, z],
-            [x, y, z + radius],
-            [x - radius, y, z],
-            [x, y, z - radius],
-        ];
-
-        let i = 0;
+      if (config.utils['anti-afk'].rotate) {
         setInterval(() => {
-             if(i === points.length) i = 0;
-             bot.pathfinder.setGoal(new GoalXZ(points[i][0], points[i][2]));
-             i++;
-        }, 1000);
-    });
+          if (!bot.entity) return
+          bot.look(bot.entity.yaw + 0.3, bot.entity.pitch, true)
+        }, 200)
+      }
+    }
+  })
+
+  bot.on('chat', (username, message) => {
+    if (config.utils['chat-log']) {
+      console.log(`<${username}> ${message}`)
+    }
+  })
+
+  bot.on('end', () => {
+    console.log('❌ Bot disconnected, reconnecting...')
+    setTimeout(startBot, config.utils['auto-reconnect-delay'])
+  })
+
+  bot.on('error', err => {
+    console.log('⚠️ Error:', err.message)
+  })
 }
 
-createBot();
-
+startBot()
