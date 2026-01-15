@@ -42,19 +42,13 @@
     },
 
     "chat-messages": {
-      "enabled": true,
-      "repeat": true,
-      "repeat-delay": 40,
-
-      "messages": [
-        "I'm a bot made by pratikgamer11",
-        "My owner is Pratikgamer11",
-        "I am online 24/7 forever secure forever online."
-      ]
-    },
-
-    "chat-log": true,
-    "auto-reconnect": true,
-    "auto-reconnect-delay": 2599
-  }
-}
+  "enabled": true,
+  "repeat": true,
+  "repeat-delay": 40,
+  "start-delay": 8000,
+  "messages": [
+    "I'm a bot made by pratikgamer11",
+    "My owner is Pratikgamer11",
+    "I am online 24/7 forever secure forever online"
+  ]
+    }
