@@ -181,3 +181,4 @@ function circleWalk(bot, radius) {
 }
 
 createBot();
+
