@@ -1,6 +1,6 @@
 {
   "bot-account": {
-    "username": "botbypratik",
+    "username": "Bot-By-PRATIK",
     "type": "offline"
   },
 
@@ -44,7 +44,7 @@
     "chat-messages": {
       "enabled": true,
       "repeat": true,
-      "repeat-delay": 60,
+      "repeat-delay": 40,
 
       "messages": [
         "I'm a bot made by pratikgamer11",
