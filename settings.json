@@ -42,11 +42,17 @@
     },
 
     "chat-messages": {
-  "enabled": true,
-  "repeat": true,
-  "repeat-delay": 40,
-  "messages": [
-    "I'm a bot made by pratikgamer11",
-    "24/7 bot with Protection"
-  ]
-},
+      "enabled": true,
+      "repeat": true,
+      "repeat-delay": 40,
+      "messages": [
+        "I'm a bot made by pratikgamer11",
+        "24/7 bot with Protection"
+      ]
+    },
+
+    "chat-log": true,
+    "auto-reconnect": true,
+    "auto-reconnect-delay": 2599
+  }
+}
