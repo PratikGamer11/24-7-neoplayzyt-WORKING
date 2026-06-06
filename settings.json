@@ -18,7 +18,9 @@
     "auto-auth": {
       "enabled": true,
       "password": "pratik"
-    },
+    }
+  }
+},
     "anti-afk": {
       "enabled": true,
       "sneak": true,
